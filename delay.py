@@ -14,25 +14,16 @@ else:
 url = 'https://data.stadt-zuerich.ch/dataset/vbz_fahrzeiten_ogd/resource/03ec9d0a-b16f-4e78-8e4f-2da4970efbb6/download/fahrzeiten_soll_ist_20180325_20180331.csv'
 s = requests.get(url).content
 c = pd.read_csv(io.StringIO(s.decode('utf-8')))
-#print(c)
-
-# with urlopen(url) as url:
-#     s = url.read()
-# # print(s)
-#
-# df = pd.read_csv(s)
-# # q = df.shape[1] - 2
-# # c = df.shape[0]
-# print(df)
-# # print(q)
-# print(c)
+print(c)
 
 
-# conn = sqlite3.connect('delay.db')
+conn = sqlite3.connect('c.db')
+cur = conn.cursor()
 # ss.to_sql(delay, conn, if_exists='append', index=False)
 
-# cur = con.cursor()
-# cur.execute("CREATE TABLE t (s);")  # use your column names here
+cmd = "CREATE TABLE IF NOT EXISTS %s (=)"
+
+cur.execute("select * from linie")  # use your column names here
 #
 # with open('s', 'rb') as fin:  # `with` statement available in 2.5+
 #     # csv.DictReader uses first line in file for column headings by default
