@@ -14,7 +14,7 @@ else:
 url = 'https://data.stadt-zuerich.ch/dataset/vbz_fahrzeiten_ogd/resource/03ec9d0a-b16f-4e78-8e4f-2da4970efbb6/download/fahrzeiten_soll_ist_20180325_20180331.csv'
 s = requests.get(url).content
 c = pd.read_csv(io.StringIO(s.decode('utf-8')))
-print(c)
+#print(c)
 
 # with urlopen(url) as url:
 #     s = url.read()
