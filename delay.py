@@ -36,6 +36,8 @@ df1.drop(dp.columns[[3, 4]], axis=1, inplace=True)
 df1['time'] = pd.to_datetime(df1['betriebsdatum'] + ' ' + df1['time'])
 df1.drop(df1.columns[[2]], axis=1, inplace=True)
 df1.loc[:, 'diff'] = df1.loc[:, 'diff'].apply(pd.to_numeric, errors='coerce', downcast='float')
+print(df1.head())
+print(df1.dtypes)
 
 # weather import & clean-up
 pd.options.mode.chained_assignment = None
