@@ -11,7 +11,6 @@ from sklearn.svm import SVC
 def mask(df3, key, value):
     return df3[df3[key] == value]
 
-
 # turn off warnings
 pd.options.mode.chained_assignment = None
 
