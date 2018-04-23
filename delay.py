@@ -166,7 +166,9 @@ SVC(C=1.0, cache_size=200, class_weight=None, coef0=0.0,
     tol=0.001, verbose=False)
 pred = clf.predict(merge.loc[:, ['rain']])
 plt.scatter(merge.loc[:, ['rain']], pred)
-plt.ylabel('predicted delay')
+plt.ylabel('predicted delay [s]')
+plt.xlabel('precipitation [mm/h]')
+plt.savefig('./output/prediction.png', format='png', dpi=800)
 plt.show()
 
 # x_train = merge.loc[:,'rain']
