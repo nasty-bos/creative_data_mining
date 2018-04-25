@@ -1,0 +1,156 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1561\cocoasubrtf200
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;\f1\fnil\fcharset0 Monaco;}
+{\colortbl;\red255\green255\blue255;\red242\green242\blue242;\red0\green0\blue0;\red180\green36\blue25;
+\red47\green180\blue29;}
+{\*\expandedcolortbl;;\csgray\c95825;\csgray\c0\c85000;\cssrgb\c76410\c21699\c12524;
+\cssrgb\c20239\c73899\c14948;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww13060\viewh8320\viewkind0
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 \
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+
+\b\fs28 \cf0 SET UP\
+
+\b0\fs24 \
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+\cf0 A.  login to your git account on your mac: \
+		
+\f1 \cf2 \cb3 \CocoaLigature0 git config --global user.email \'93youremail@email.com\'94
+\f0 \cf0 \cb1 \CocoaLigature1 \
+		
+\f1 \cf2 \cb3 \CocoaLigature0 git config --global user.name \'93username\'94
+\f0 \cf0 \cb1 \CocoaLigature1 	\
+\
+B. Go to you desired folder where you want to clone the repository:\
+	check whats in the directory: 	 
+\f1 \cf2 \cb3 \CocoaLigature0 ls
+\f0 \cf0 \cb1 \CocoaLigature1 	\
+	go forward to directory \'93coding\'94:	 
+\f1 \cf2 \cb3 \CocoaLigature0 cd coding
+\f0 \cf0 \cb1 \CocoaLigature1 \
+	go one directory backwards: 	 
+\f1 \cf2 \cb3 \CocoaLigature0 cd..
+\f0 \cf0 \cb1 \CocoaLigature1 \
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+\cf0 \
+C. Clone the repository:\
+		
+\f1 \cf2 \cb3 \CocoaLigature0 git clone https://github.com/nasty-bos/creative_data_mining.git\
+
+\f0 \cf0 \cb1 \CocoaLigature1 \
+D.(Always useful) checkout the status in \ul which repository you are \ulnone and which changes have been made to the files:\
+		
+\f1 \cf2 \cb3 \CocoaLigature0 git status
+\f0 \cf0 \cb1 \CocoaLigature1 \
+\
+
+\b\fs28 GET UP-TO-DATE WITH NEWEST VERSION FROM THE \ul MASTER BRANCH\ulnone \
+
+\b0\fs24 0. check which repository you are in:\
+		
+\f1 \cf2 \cb3 \CocoaLigature0 git status
+\f0 \cf0 \cb1 \CocoaLigature1 \
+\
+1. change to the master branch:\
+		
+\f1 \cf2 \cb3 \CocoaLigature0 git checkout master
+\f0 \cf0 \cb1 \CocoaLigature1 \
+\
+2. Get the newest version of the code on master\
+		
+\f1 \cf2 \cb3 \CocoaLigature0 git pull
+\f0 \cf0 \cb1 \CocoaLigature1 \
+		\
+\
+
+\b\fs28 BRANCHING AND MERGING\
+
+\b0\fs24 3. checkout the status in \ul which repository you are \ulnone and which changes have been made to the files:\
+		
+\f1 \cf2 \cb3 \CocoaLigature0 git status
+\f0 \cf0 \cb1 \CocoaLigature1 \
+		
+\f1 \cf2 \cb3 \CocoaLigature0 git checkout master
+\f0\b\fs28 \cf0 \cb1 \CocoaLigature1 \
+
+\b0\fs24 \
+4. If 
+\f1 \cf2 \cb3 \CocoaLigature0 On branch master,
+\f0 \cf0 \cb1 \CocoaLigature1  go ahead and create a branch called \'93newbranch\'94:\
+		
+\f1 \cf2 \cb3 \CocoaLigature0 git branch newbranch
+\f0 \cf0 \cb1 \CocoaLigature1 \
+\
+5. Go over to/\'92check out\'92 your new branch \'93newbranch\'94\
+		
+\f1 \cf2 \cb3 \CocoaLigature0 git checkout newbranch
+\f0 \cf0 \cb1 \CocoaLigature1 \
+\
+6.
+\b  Work on the project once you are in the \ul branch
+\b0 \ulnone ! in our case on Jupyter Notebook \'97 this is how you acces jupyter notebook from terminal, it will open jupyter notebook in the browser:\
+		
+\f1 \cf2 \cb3 \CocoaLigature0 jupyter notebook
+\f0 \cf0 \cb1 \CocoaLigature1 \
+\
+7. check the status of the \'93newbranch\'94 repository again, it should show you that the file you have worked on is 
+\f1 \cf4 \cb3 \CocoaLigature0 modified:
+\f0 \cf0 \cb1 \CocoaLigature1 \
+		
+\f1 \cf2 \cb3 \CocoaLigature0 git status
+\f0 \cf0 \cb1 \CocoaLigature1 \
+\
+8. add the changed file to your \'93HEAD\'94\
+		
+\f1 \cf2 \cb3 \CocoaLigature0 git add filename
+\f0 \cf0 \cb1 \CocoaLigature1    e.g.:    
+\f1 \cf2 \cb3 \CocoaLigature0 git add delay.ipynb 
+\f0 \cf0 \cb1 \CocoaLigature1  \
+\
+9. commit the \'93HEAD\'94 to the local repository with a message of what you worked on:\
+		
+\f1 \cf2 \cb3 \CocoaLigature0 git commit -m "my personal message of what I changed\'93
+\f0 \cf0 \cb1 \CocoaLigature1 \
+\
+10. push the branch \'93newbranch\'94 to the remote repository (from local to remote): \
+		
+\f1 \cf2 \cb3 \CocoaLigature0 git push -u origin newbranch
+\f0 \cf0 \cb1 \CocoaLigature1 \
+	if if step 10 worked you should now see the \ul branch\ulnone  \'93newbranch\'94 online on Github under \'91branches\'92 but not yet any 	changes on the master branch\
+\
+11. Go over to/ check out the master branch\
+		
+\f1 \cf2 \cb3 \CocoaLigature0 git checkout master
+\f0 \cf0 \cb1 \CocoaLigature1 \
+\
+12.  Merge the branch \'93newbranch\'94 with the master branch:\
+		
+\f1 \cf2 \cb3 \CocoaLigature0 git merge newbranch
+\f0 \cf0 \cb1 \CocoaLigature1  \
+\
+13. Push the local master branch into the remote master repository (the \'93master-master\'94 branch)\
+		
+\f1 \cf2 \cb3 \CocoaLigature0 git push -u origin master
+\f0 \cf0 \cb1 \CocoaLigature1 \
+\
+14. Now that you no longer need the branch \'93newbranch\'94 , you can delete this branch on you local repository:\
+		
+\f1 \cf2 \cb3 \CocoaLigature0 git branch -d newbranch
+\f0 \cf0 \cb1 \CocoaLigature1 \
+		\
+15. Now you can delete the branch \'93newbranch\'94 from the remote repository (not visible on github.com anymore)\
+		
+\f1 \cf2 \cb3 \CocoaLigature0 git push origin --delete newbranch
+\f0 \cf0 \cb1 \CocoaLigature1 \
+	\'97> branch \'93newbranch\'94 vanished from github.com as well\
+\
+16. check which branches there, which one you are on (in green: 
+\f1 \cf2 \cb3 \CocoaLigature0 * \cf5 \cb3 master
+\f0 \cf0 \cb1 \CocoaLigature1 ) are and if branch has been deleted:\
+		
+\f1 \cf2 \cb3 \CocoaLigature0 git branch
+\f0 \cf0 \cb1 \CocoaLigature1 \
+\
+17. Start over again with the branching;)\
+}
