@@ -150,23 +150,37 @@ D.(Always useful) checkout the status in \ul which repository you are \ulnone an
 \f1 \cf2 \cb3 \CocoaLigature0 git push -u origin master
 \f0 \cf0 \cb1 \CocoaLigature1 \
 \
-14. Now that you no longer need the branch \'93newbranch\'94 , you can delete this branch on you local repository:\
+14. if it fails to push aka: 
+\f1 \cf2 \cb3 \CocoaLigature0  ! [rejected]        master -> master (fetch first)\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf2 \cb3 error: failed to push some refs to
+\f0 \cf0 \cb1 \CocoaLigature1  first you have to pull again:\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+\cf0 		\
+		
+\f1 \cf2 \cb3 \CocoaLigature0 git pull
+\f0 \cf0 \cb1 \CocoaLigature1 \
+	when at big screen in terminal\'97>	
+\f1 \cf2 \cb3 \CocoaLigature0 :q <press enter>
+\f0 \cf0 \cb1 \CocoaLigature1 \
+\
+15. Now that you no longer need the branch \'93newbranch\'94 , you can delete this branch on you local repository:\
 		
 \f1 \cf2 \cb3 \CocoaLigature0 git branch -d newbranch
 \f0 \cf0 \cb1 \CocoaLigature1 \
 		\
-15. Now you can delete the branch \'93newbranch\'94 from the remote repository (not visible on github.com anymore)\
+16. Now you can delete the branch \'93newbranch\'94 from the remote repository (not visible on github.com anymore)\
 		
 \f1 \cf2 \cb3 \CocoaLigature0 git push origin --delete newbranch
 \f0 \cf0 \cb1 \CocoaLigature1 \
 	\'97> branch \'93newbranch\'94 vanished from github.com as well\
 \
-16. check which branches there, which one you are on (in green: 
+17. check which branches there, which one you are on (in green: 
 \f1 \cf2 \cb3 \CocoaLigature0 * \cf5 \cb3 master
 \f0 \cf0 \cb1 \CocoaLigature1 ) are and if branch has been deleted:\
 		
 \f1 \cf2 \cb3 \CocoaLigature0 git branch
 \f0 \cf0 \cb1 \CocoaLigature1 \
 \
-17. Start over again with the branching;)\
+18. Start over again with the branching;)\
 }
