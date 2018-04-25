@@ -11,6 +11,7 @@ from sklearn.svm import SVC
 def mask(df3, key, value):
     return df3[df3[key] == value]
 
+
 # turn off warnings
 pd.options.mode.chained_assignment = None
 
@@ -79,12 +80,16 @@ print('cleaned diff data columns: %d' % col)
 path = r'./weather/*.csv'
 # import csv as dataframe
 new_cols = ['weather']
-we = pd.read_csv(glob.glob('./weather/*.csv')[0], header=None, names=new_cols)
+we = pd.read_csv('./weather/agrometeo-data.csv', encoding='Latin-1', header=None, names=new_cols)
+# s = requests.get(glob.glob(path)).content
+# c = pd.read_csv(glob.glob(io.StringIO(s.decode('utf-8')[0]), index_col=None))
+# de = pd.DataFrame(data=c)
 wet1 = pd.DataFrame(data=we)
 # clean-up
 wet = wet1.iloc[3:]
 wet.loc[:, 'time'] = wet.weather.str.split(';').str.get(0)
-wet.loc[:, 'rain'] = wet.weather.str.split(';').str.get(1)
+wet.loc[:, 'temp'] = wet.weather.str.split(';').str.get(1)
+wet.loc[:, 'rain'] = wet.weather.str.split(';').str.get(2)
 wet.drop(wet.columns[[0]], axis=1, inplace=True)
 wet.loc[:, 'time'] = pd.to_datetime(wet.loc[:, 'time'])
 wet.loc[:, 'rain'] = wet.loc[:, 'rain'].apply(pd.to_numeric, errors='coerce')
@@ -97,8 +102,8 @@ q = wet.shape[1]
 o = wet.shape[0]
 print('weather data rows: %d' % o)
 print('weather data columns: %d' % q)
-# print(wet.head())
-# print(wet.dtypes)
+print(wet.head())
+print(wet.dtypes)
 
 ## Merge
 # merge on both time col which are in datetime format
