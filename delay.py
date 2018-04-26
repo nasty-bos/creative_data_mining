@@ -1,23 +1,16 @@
 import shutil
 import pandas as pd
-import glob
+import numpy as np
+from scipy import stats
 import os
 import matplotlib.pyplot as plt
 from matplotlib import style
-from scipy import stats
-from sklearn.svm import SVC
 
+pd.options.mode.chained_assignment = None  # turn off warnings
 
-def mask(df3, key, value):
-    return df3[df3[key] == value]
-
-
-# turn off warnings
-pd.options.mode.chained_assignment = None
-
-## Import of delay data
+# === Import of delay data
 listpaths = [
-    'https://data.stadt-zuerich.ch/dataset/vbz_fahrzeiten_ogd/resource/a265b5d8-287f-4d22-88b2-f3a1770e1a4a/download/fahrzeiten_soll_ist_20180225_20180303.csv',
+    'https://data.stadt-zuerich.ch/dataset/vbz_fahrzeiten_ogd/resource/03ec9d0a-b16f-4e78-8e4f-2da4970efbb6/download/fahrzeiten_soll_ist_20180325_20180331.csv',
     'https://data.stadt-zuerich.ch/dataset/vbz_fahrzeiten_ogd/resource/03ec9d0a-b16f-4e78-8e4f-2da4970efbb6/download/fahrzeiten_soll_ist_20180325_20180331.csv',
     'https://data.stadt-zuerich.ch/dataset/vbz_fahrzeiten_ogd/resource/c88a3801-c6fc-4d32-8ece-e269899be497/download/fahrzeiten_soll_ist_20180318_20180324.csv',
     'https://data.stadt-zuerich.ch/dataset/vbz_fahrzeiten_ogd/resource/eb403fd1-8f8b-475e-98aa-f04ee3b255ba/download/fahrzeiten_soll_ist_20180311_20180317.csv',
@@ -32,16 +25,22 @@ for path_ in listpaths:
     df = pd.read_csv(path_, index_col=None)
     list_.append(df)
 df = pd.concat(list_)
+
+
 # check size
-check = pd.DataFrame(data=df)
-col = check.shape[1]
-row = check.shape[0]
+# check = pd.DataFrame(data=df)
+# col = check.shape[1]
+# row = check.shape[0]
+# print('delay data rows: %d' % row)
+# print('delay data columns: %d' % col)
+# print(df.head(3))
 
-print('delay data rows: %d' % row)
-print('delay data columns: %d' % col)
-# print(df.head(2))
 
-## Time difference calculation and formatting
+# === Time difference calculation and formatting
+
+def mask(df, key, value):
+    return df[df[key] == value]
+
 
 df.drop(df.columns[
             [3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
@@ -63,27 +62,27 @@ df1.loc[:, 'diff'] = df1.loc[:, 'diff'].apply(pd.to_numeric, errors='coerce', do
 df1.loc[:, 'time'] = df1.loc[:, 'time'].dt.round('60min')
 df1 = df1.dropna(how='any')
 df1['diff'] = df1['diff'].astype(int)
-# df1 = df1.loc[df1['diff'] > 60]
+df1 = df1.loc[df1['diff'] > 0]
+df5 = df1.copy()
+df5['diff'] = df5['diff'] / 60
 
-check = pd.DataFrame(data=df1)
-col = check.shape[1]
-row = check.shape[0]
-
-print('cleaned diff data rows: %d' % row)
-print('cleaned diff data columns: %d' % col)
-# print(df1.head())
+# === check size
+# check = pd.DataFrame(data=df1)
+# col = check.shape[1]
+# row = check.shape[0]
+#
+# print('cleaned diff: %d' % row)
+# print('cleaned diff: %d' % col)
+# print(df1.head(3))
 # print(df1.dtypes)
 
-## Weather Data
+# === Weather Data
 
 # input folder
 path = r'./weather/*.csv'
 # import csv as dataframe
 new_cols = ['weather']
 we = pd.read_csv('./weather/agrometeo-data.csv', encoding='Latin-1', header=None, names=new_cols)
-# s = requests.get(glob.glob(path)).content
-# c = pd.read_csv(glob.glob(io.StringIO(s.decode('utf-8')[0]), index_col=None))
-# de = pd.DataFrame(data=c)
 wet1 = pd.DataFrame(data=we)
 # clean-up
 wet = wet1.iloc[3:]
@@ -94,50 +93,100 @@ wet.drop(wet.columns[[0]], axis=1, inplace=True)
 wet.loc[:, 'time'] = pd.to_datetime(wet.loc[:, 'time'])
 wet.loc[:, 'rain'] = wet.loc[:, 'rain'].apply(pd.to_numeric, errors='coerce')
 wet = wet.dropna(how='any')
-# wet = wet.loc[wet['rain']*10]
-# wet['rain'] = wet['rain'].astype(int)
-# wet = wet.loc[wet['rain'] > 0]
 
-q = wet.shape[1]
-o = wet.shape[0]
-print('weather data rows: %d' % o)
-print('weather data columns: %d' % q)
-print(wet.head())
-print(wet.dtypes)
+# === check size
+# q = wet.shape[1]
+# o = wet.shape[0]
+# print('weather data rows: %d' % o)
+# print('weather data columns: %d' % q)
+# print(wet.head())
+# print(wet.dtypes)
 
-## Merge
-# merge on both time col which are in datetime format
-merge = df1.merge(wet, left_on='time', right_on='time', how='inner')
+# === Merge
+# left merge on both time col which are in datetime format
+merge = df5.merge(wet, left_on='time', right_on='time', how='left')
 
-# print(merge.head(3))
-# print(merge.dtypes)
+# check size
+print(merge.head(3))
+print(merge.dtypes)
 
-## Correlation
+# === Correlation
+
+from mpl_toolkits.mplot3d import Axes3D
 
 style.use("ggplot")
-
-x = merge.loc[:, 'rain']
-y = merge.loc[:, 'diff']
 
 # output folder
 newpath = r'./output/'
 if os.path.exists(newpath):
     shutil.rmtree(newpath, ignore_errors=True)
 os.makedirs(newpath)
-plt.scatter(x, y)
-plt.title("Correlation")
-plt.xlabel("rain[mm/h]")
-plt.ylabel("delay[s]")
-plt.savefig('./output/correlation.png', format='png', dpi=800)
+
+end = merge.copy()
+
+end['time'] = end.loc[:, 'time'].apply(lambda x: x.month)
+
+print(end.head(2))
+print(end.dtypes)
+
+# === csv to check output data
+merge.to_csv('./output/merge.csv', header=False, index=False)
+wet.to_csv('./output/wet.csv', header=False, index=False)
+df1.to_csv('./output/df1.csv', header=False, index=False)
+
+# === frequency histogramm
+plt.hist(end.loc[:, 'diff'])
+plt.title("delay frequency")
+plt.xlabel("delay[minutes]")
+plt.ylabel("frequency")
+plt.savefig('./output/2Dfrequency.png', format='png', dpi=800)
 plt.show()
 
+# === 2D monthly distribution of delays
+x = end.loc[:, 'time']
+y = end.loc[:, 'diff']
+plt.scatter(x, y)
+plt.title(" ")
+plt.xlabel("months")
+plt.ylabel("delay[minutes]")
+plt.savefig('./output/2Dmonthly.png', format='png', dpi=800)
+plt.show()
+
+# === 2D dependency on rain
+x = end.loc[:, 'rain']
+y = end.loc[:, 'diff']
+plt.scatter(x, y)
+plt.title("correlation")
+plt.xlabel("rain[mm/m2]")
+plt.ylabel("delay[min]")
+plt.savefig('./output/2Dfigure.png', format='png', dpi=800)
+plt.show()
+# === 3D Figure rain, time, delay
+x = end.loc[:, 'time']
+y = end.loc[:, 'rain']
+z = end.loc[:, 'diff']
+
+fig = plt.figure()
+ax = Axes3D(fig)
+ax.scatter(x, y, z)
+plt.title("Correlation")
+ax.set_xlabel('month')
+ax.set_ylabel('precipitation [mm/h]')
+ax.set_zlabel('delay[minutes]')
+plt.savefig('./output/3Dcorrelation.png', format='png', dpi=800)
+plt.show()
+
+# === other statistics on data
 # print(merge.loc[:,'rain'].describe())
 # print(merge.loc[:,'diff'].describe())
+
 slope, intercept, r_value, p_value, std_err = stats.linregress(merge.loc[:, 'rain'], merge.loc[:, 'diff'])
 print("r-squared:", r_value ** 2)
 
-## Prediction
-X = merge.loc[:, 'rain']
+# === Prediction
+from sklearn.svm import SVC
+
+X = merge.loc[:, ['rain']]
 y = merge.loc[:, 'diff']
 
 clf = SVC()
