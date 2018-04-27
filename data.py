@@ -70,6 +70,14 @@ def get_weather_data():
 				sep=';', header=None, 
 				skiprows=[0, 1, 2],
 				index_col=0,
-				parse_dates=True)
+				parse_dates=True,
+				date_parser=lambda x: datetime.datetime.strptime(x, '%d.%m.%Y %H:%M'))
 
 	return result
+
+
+##################################################################################
+def fourier_frequency_filter():
+
+	return {'finished': False}
+	
