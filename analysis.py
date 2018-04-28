@@ -91,8 +91,8 @@ def main():
 	yData = weeklySeasoned['diff'].loc[xData.index]
 	plt.figure()
 	plt.scatter(x=xData, y=yData)
-	plt.xlabel('CUMULATIVE RAINFALL in MM')
-	plt.ylabel('DE-SEASONED DELAY')
+	plt.xlabel('CUM. RAINFALL [MM]')
+	plt.ylabel('DE-SEASONED DELAY [S]')
 	plt.tight_layout()
 
 	del xData, yData
@@ -105,10 +105,16 @@ def main():
 	yData = weeklySeasoned['diff']
 
 	fig, ax = plt.subplots(2, sharex=True)
+
 	axis=0
 	ax[axis].plot(yData.index, yData) 
+	ax[axis].set_ylabel('DE-SEASONED DELAY [S]')
+
 	axis+=1
-	ax[axis].bar(xData.index, height=xData, width=0.05)
+	ax[axis].bar(xData.index, height=xData, width=0.05, color='green')
+	ax[axis].set_xlabel('YYYY-MM-DD:HH')
+	ax[axis].set_ylabel('CUM. HOURLY RAINFALL [MM]')
+	plt.tight_layout()
 
 	del mask, xData, yData
 
@@ -120,8 +126,8 @@ def main():
 	yData = weeklySeasoned['diff']
 	plt.figure()
 	plt.scatter(x=xData, y=yData, marker='x')
-	plt.xlabel('AVERAGE TEMPERATURE in DEGREES CELCIUS')
-	plt.ylabel('DE-SEASONED DELAY')
+	plt.xlabel('AVG TEMPERATURE [C]')
+	plt.ylabel('DE-SEASONED DELAY [S]')
 	plt.tight_layout()
 
 	'''
@@ -129,10 +135,17 @@ def main():
 		Time-series plot between AVERAGE TEMPERATURE and DE-SEASONED DELAY
 	'''
 	fig, ax = plt.subplots(2, sharex=True)
+
 	axis=0
 	ax[axis].plot(yData.index, yData) 
+	ax[axis].set_ylabel('DE-SEASONED DELAY [S]')
+
 	axis+=1
-	ax[axis].bar(xData.index, height=xData, width=0.14)
+	ax[axis].bar(xData.index, height=xData, width=0.14, color='red')
+	ax[axis].set_xlabel('YYYY-MM-DD:HH')
+	ax[axis].set_ylabel('AVG. HOURLY TEMPERATURE [C]')
+	plt.tight_layout()
+
 
 	del xData, yData
 	
