@@ -1,10 +1,27 @@
 import os
 import datetime
 import pandas 
+import numpy
+
+import matplotlib.pyplot as plt
 
 ##################################################################################
 def data_dir():
 	return "./data/"
+
+
+##################################################################################
+def make_correlation_graph(x, y, color='blue', marker='x', xLabel='', ylabel=''):
+	corrMat = numpy.corrcoef(x, y)
+	corrCoefPatch = mpatches.Patch(color=color, label='Correlation coefficient := %.2f' %corrMat[0][1])
+	fix, ax = plt.subplots(1)
+	ax.scatter(x=x, y=y, marker=marker)
+	ax.set_xlabel(xLabel)
+	ax.set_ylabel(yLabel)
+	plt.legend(handles=[corrCoefPatch])
+	plt.tight_layout()
+
+	return fig
 
 
 ##################################################################################
