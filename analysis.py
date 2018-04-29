@@ -5,6 +5,7 @@ import scipy.fftpack
 import datetime
 
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 import data as dt
 
 ##################################################################################
@@ -34,6 +35,7 @@ def main():
 	weatherDelays = delays.merge(weather, left_on='datetime', right_index=True, how='left')
 	weatherDelays.to_csv(os.path.join(dt.data_dir(), 'weather_delays_merged.csv'))
 
+	# ==== Remove NaN where there is no public transport data
 	mask = weatherDelays.datetime > datetime.datetime(2018,2,4)
 	weatherDelays = weatherDelays[mask]
 	del mask
@@ -80,6 +82,15 @@ def main():
 	plt.figure()
 	weeklySeasoned['diff'].plot()
 
+	# === Plot data with and without seasoning treatment 
+	fig, axes = plt.subplots(2, sharex=True)
+
+	axis=0
+	axes[axis].plot(weeklySeasoned.index, cumulativeWeatherDelays.reindex(weeklySeasoned.index)['diff'])
+
+	axis+=1
+	axes[axis].plot(weeklySeasoned.index, weeklySeasoned['diff'])
+
 	# === Plot delay-vs-weather graphs for de-seasoned data
 
 	'''
@@ -89,10 +100,27 @@ def main():
 	mask = cumulativeWeatherDelays.reindex(index=weeklySeasoned.index)['niederschlag_mm'] > 0 
 	xData = cumulativeWeatherDelays.reindex(index=weeklySeasoned.index)['niederschlag_mm'][mask]
 	yData = weeklySeasoned['diff'].loc[xData.index]
+	corrMat = numpy.corrcoef(xData, yData)
+	corrCoefPatch = mpatches.Patch(color='blue', label='Correlation coefficient := %.2f' %corrMat[0][1])
 	plt.figure()
-	plt.scatter(x=xData, y=yData)
+	plt.scatter(x=xData, y=yData, marker='x')
 	plt.xlabel('CUM. RAINFALL [MM]')
 	plt.ylabel('DE-SEASONED DELAY [S]')
+	plt.legend(handles=[corrCoefPatch])
+	plt.tight_layout()
+
+	del xData, yData
+
+	mask = cumulativeWeatherDelays['niederschlag_mm'] > 0 
+	xData = cumulativeWeatherDelays['niederschlag_mm'][mask]
+	yData = cumulativeWeatherDelays['diff'].loc[xData.index]
+	corrMat = numpy.corrcoef(xData, yData)
+	corrCoefPatch = mpatches.Patch(color='blue', label='Correlation coefficient := %.2f' %corrMat[0][1])
+	plt.figure()
+	plt.scatter(x=xData, y=yData, marker='x')
+	plt.xlabel('CUM. RAINFALL [MM]')
+	plt.ylabel('DELAY [S]')
+	plt.legend(handles=[corrCoefPatch])
 	plt.tight_layout()
 
 	del xData, yData
