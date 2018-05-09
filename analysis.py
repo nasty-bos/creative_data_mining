@@ -28,8 +28,18 @@ def main():
 	delays.datetime = delays.datetime.dt.round('60min')
 
 	# === Show delay pattern as a function of time of day
-	plt.figure()
-	delays.groupby('time').sum()['diff'].plot()
+	temp = delays.copy()
+	temp.loc[:, 'hour_of_day'] = pandas.to_datetime(temp.time).dt.hour
+	temp = temp.groupby('hour_of_day').mean() 
+	fig, ax = plt.subplots(1)
+	ax.plot(temp.index, temp['diff'])
+	ax.set_ylabel('Average delay [s]')
+	ax.set_xlabel('Time of Day [HH:MM]')
+
+	for tick in ax.get_xticklabels():
+		tick.set_rotation(90)
+
+	plt.savefig('delay_vs_time-of-day.png')
 
 	# === Merge with WEATHER data 
 	weatherDelays = delays.merge(weather, left_on='datetime', right_index=True, how='left')
@@ -83,13 +93,35 @@ def main():
 	weeklySeasoned['diff'].plot()
 
 	# === Plot data with and without seasoning treatment 
-	fig, axes = plt.subplots(2, sharex=True)
+	fig, axes = plt.subplots(2, sharex=True, figsize=(15, 10))
 
 	axis=0
 	axes[axis].plot(weeklySeasoned.index, cumulativeWeatherDelays.reindex(weeklySeasoned.index)['diff'])
+	axes[axis].set_xlabel('Without de-seasoning')
+	axes[axis].set_ylabel('Delay [s]')
 
 	axis+=1
 	axes[axis].plot(weeklySeasoned.index, weeklySeasoned['diff'])
+	axes[axis].set_xlabel('With de-seasoning')
+	axes[axis].set_ylabel('Delay [s]')
+
+	fig.savefig('seasoned_vs_de-seasoned_delay_data.png')
+
+	# === Plot data without de-seasoning and rainfall data
+	fig, axes = plt.subplots(2, sharex=True, figsize=(15, 10))
+
+	axis=0
+	axes[axis].plot(cumulativeWeatherDelays.index, cumulativeWeatherDelays['diff'])
+	axes[axis].set_xlabel('Without de-seasoning')
+	axes[axis].set_ylabel('Delay [s]')
+
+	axis+=1
+	axes[axis].plot(weeklySeasoned.index, weeklySeasoned['niederschlag_mm'])
+	axes[axis].set_xlabel('Rain data')
+	axes[axis].set_ylabel('Rainfall [mm]')
+
+	fig.savefig('seasoned_vs_rainfall_data.png')
+
 
 	# === Plot delay-vs-weather graphs for de-seasoned data
 
@@ -104,10 +136,11 @@ def main():
 	corrCoefPatch = mpatches.Patch(color='blue', label='Correlation coefficient := %.2f' %corrMat[0][1])
 	plt.figure()
 	plt.scatter(x=xData, y=yData, marker='x')
-	plt.xlabel('CUM. RAINFALL [MM]')
-	plt.ylabel('DE-SEASONED DELAY [S]')
+	plt.xlabel('CUM. RAINFALL [mm]')
+	plt.ylabel('DE-SEASONED DELAY [s]')
 	plt.legend(handles=[corrCoefPatch])
 	plt.tight_layout()
+	plt.savefig('corr_rain_vs_delay_-_with_de-seasoning.png')
 
 	del xData, yData
 
@@ -118,10 +151,11 @@ def main():
 	corrCoefPatch = mpatches.Patch(color='blue', label='Correlation coefficient := %.2f' %corrMat[0][1])
 	plt.figure()
 	plt.scatter(x=xData, y=yData, marker='x')
-	plt.xlabel('CUM. RAINFALL [MM]')
-	plt.ylabel('DELAY [S]')
+	plt.xlabel('CUM. RAINFALL [mm]')
+	plt.ylabel('DELAY [s]')
 	plt.legend(handles=[corrCoefPatch])
 	plt.tight_layout()
+	plt.savefig('corr_rain_vs_delay_-_no_de-seasoning.png')
 
 	del xData, yData
 
@@ -129,20 +163,22 @@ def main():
 	Description:
 		Time-series plot between CUMULATIVE RAIN and DE-SEASONED DELAY
 	'''
-	xData = cumulativeWeatherDelays.reindex(index=weeklySeasoned.index)['niederschlag_mm']
-	yData = weeklySeasoned['diff']
+	xData = cumulativeWeatherDelays['niederschlag_mm']
+	yData = cumulativeWeatherDelays['diff']
 
-	fig, ax = plt.subplots(2, sharex=True)
+	fig, ax = plt.subplots(2, sharex=True, figsize=(15, 10))
 
 	axis=0
 	ax[axis].plot(yData.index, yData) 
-	ax[axis].set_ylabel('DE-SEASONED DELAY [S]')
+	ax[axis].set_ylabel('Delay [s]')
 
 	axis+=1
 	ax[axis].bar(xData.index, height=xData, width=0.05, color='green')
 	ax[axis].set_xlabel('YYYY-MM-DD:HH')
-	ax[axis].set_ylabel('CUM. HOURLY RAINFALL [MM]')
+	ax[axis].set_ylabel('CUM. HOURLY RAINFALL [mm]')
 	plt.tight_layout()
+
+	fig.savefig('delay_vs_rainfall.png')
 
 	del mask, xData, yData
 
@@ -155,7 +191,7 @@ def main():
 	plt.figure()
 	plt.scatter(x=xData, y=yData, marker='x')
 	plt.xlabel('AVG TEMPERATURE [C]')
-	plt.ylabel('DE-SEASONED DELAY [S]')
+	plt.ylabel('DE-SEASONED DELAY [s]')
 	plt.tight_layout()
 
 	'''
@@ -166,7 +202,7 @@ def main():
 
 	axis=0
 	ax[axis].plot(yData.index, yData) 
-	ax[axis].set_ylabel('DE-SEASONED DELAY [S]')
+	ax[axis].set_ylabel('DE-SEASONED DELAY [s]')
 
 	axis+=1
 	ax[axis].bar(xData.index, height=xData, width=0.14, color='red')
