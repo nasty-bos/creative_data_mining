@@ -5,6 +5,9 @@ import numpy
 
 import matplotlib.pyplot as plt
 
+from itertools import compress
+
+
 ##################################################################################
 def data_dir():
 	return "./data/"
@@ -80,7 +83,6 @@ def get_lineie_69_data():
 
 ##################################################################################
 def get_weather_data():
-	fullPath = os.path.join(data_dir(), 'agrometeo-data.csv')
 	result = pandas.read_csv(os.path.join(
 				data_dir(), 'agrometeo-data.csv'), 
 				names=['datetime', 'temp_degrees_c_mittel', 'niederschlag_mm'], 
@@ -98,3 +100,15 @@ def fourier_frequency_filter():
 
 	return {'finished': False}
 	
+##################################################################################
+def get_iac_weather_data():
+	fullPath = os.path.join(data_dir(), 'ETH Station Data', 'Weather', 'dated_weather_data.csv')
+	return pandas.read_csv(
+		fullPath,
+		sep=',',
+		header=0,
+		index_col=0,
+		parse_dates=True,
+		date_parser=lambda x: datetime.datetime.strptime(x, '%Y-%m-%datetime %H:%M:%S'))
+
+

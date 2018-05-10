@@ -218,6 +218,46 @@ def main():
 
 
 ##################################################################################
+def analyze_weather_delays():
+
+	# === Read DELAYS and WEATHER data
+	delays = dt.get_lineie_69_data()
+	weather = dt.get_iac_weather_data()
+
+	# === Focus on BUS 69
+	mask = delays.linie == 69
+	delays = delays[mask]
+	delays.reset_index(drop=True, inplace=True)
+
+	# === Extract exact time delays
+	delays.loc[:, 'diff'] = delays.ist_an_von - delays.soll_an_von
+	delays.loc[:, 'time'] = pandas.to_datetime(delays.soll_an_von.copy().astype(float), errors='coerce', unit='s')
+	delays.time = delays.time.dt.strftime('%H:%M')
+	delays.loc[:, 'datetime'] = pandas.to_datetime(delays.datum_von.astype(str) + ' ' + delays.time)
+	delays.datetime = delays.datetime.dt.round('60min')
+
+	groupedDelaysByHour = delays.groupby('datetime').sum()
+	groupedWeatherByHour = weather.resample('H').sum()
+
+	df = groupedDelaysByHour.merge(groupedWeatherByHour, left_index=True, right_index=True, how='left')
+	print(df.corr().loc['diff', 'rain'])
+	# plt.savefig('delay_vs_time-of-day.png')
+
+	# # === Merge with WEATHER data 
+	# weatherDelays = delays.merge(weather, left_on='datetime', right_index=True, how='left')
+	# weatherDelays.to_csv(os.path.join(dt.data_dir(), 'weather_delays_merged.csv'))
+
+	# # ==== Remove NaN where there is no public transport data
+	# mask = weatherDelays.datetime > datetime.datetime(2018,2,4)
+	# weatherDelays = weatherDelays[mask]
+	# del mask
+	
+	# cumulativeWeatherDelays = weatherDelays.groupby('datetime').sum()
+	# averageWeatherDelays = weatherDelays.groupby('datetime').mean()
+
+
+
+##################################################################################
 if __name__ == "__main__":
-	main()
+	analyze_weather_delays()
 	print('Done!')

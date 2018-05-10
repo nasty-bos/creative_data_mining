@@ -15,33 +15,45 @@ import csv
 import os
 import glob
 import shutil
+import datetime
 
 f=sorted(glob.glob('IAC-Met-HBerg_2018-*.dat'))           
-os.makedirs(r'./Weather')                         
-newpath=r'./Weather' 
+
+if not os.path.exists(os.path.join('Weather')):
+    os.makedirs(r'./Weather')                         
+
+path = r'./Weather' 
 
 final=pd.DataFrame({'' : []})
 
+container = []
 for i in f:
-    
+
     with open(i,'r') as input_file:
+        ls = i.split('_')
+        date = datetime.datetime.strptime(ls[1].replace('.dat', ''), '%Y-%m-%d')
+
+        print("Processing date %s" %ls[1])
+
         lines = input_file.readlines()
         newLines = []
         for line in lines:
             newLine = line.strip().split()
             newLines.append(newLine)
 
-        with open('output.csv', 'w') as output_file:
-            file_writer = csv.writer(output_file)
-            file_writer.writerows(newLines)
+        cols = newLines[41]
+        data = newLines[45: ]
 
-    import pdb; pdb.set_trace()
-    meta = datetime.datetime.strptime(pd.read_csv('output.csv',header=None, skiprows=range(6+1), usecols=[0]), "%Y %m %d")        
-    data=pd.read_csv('output.csv',header=None, skiprows=43, usecols=[0,2,7])
-    final=pd.concat([final, data])
+        df = pd.DataFrame.from_records(data)
+        df.columns = cols
 
+        hours = df.time.astype(int) // 60
+        minutes = df.time.astype(int).mod(60) 
+        dateTime = [date.replace(minute=mn, hour=hr) for (hr, mn) in pd.concat([hours, minutes], axis=1).values]
+        df.index = dateTime
+        container.append(df)
 
-final.to_csv(newpath + '_Data.csv', index = False, header=None)
-file=newpath + '_Data.csv' 
-shutil.move(file,newpath)  
-os.remove('output.csv')   
+        del df, data, cols, hours, minutes, dateTime
+
+final = pd.concat(container, axis=0)
+final.to_csv(os.path.join(path, 'dated_weather_data.csv'))
