@@ -42,7 +42,7 @@ def main():
 	plt.savefig('delay_vs_time-of-day.png')
 
 	# === Merge with WEATHER data 
-	weatherDelays = delays.merge(weather, left_on='datetime', right_index=True, how='left')
+	weatherDelays = weather.merge(delays, right_on='datetime', left_index=True, how='inner')
 	weatherDelays.to_csv(os.path.join(dt.data_dir(), 'weather_delays_merged.csv'))
 
 	# ==== Remove NaN where there is no public transport data
@@ -50,7 +50,7 @@ def main():
 	weatherDelays = weatherDelays[mask]
 	del mask
 	
-	cumulativeWeatherDelays = weatherDelays.groupby('datetime').sum()
+	cumulativeWeatherDelays = weatherDelays.groupby('datetime').mean()
 	averageWeatherDelays = weatherDelays.groupby('datetime').mean()
 
 	# === Estimate DAILY SEASONALITY using Fourier transform
@@ -164,6 +164,7 @@ def main():
 		Time-series plot between CUMULATIVE RAIN and DE-SEASONED DELAY
 	'''
 	xData = cumulativeWeatherDelays['niederschlag_mm']
+	print(xData)
 	yData = cumulativeWeatherDelays['diff']
 
 	fig, ax = plt.subplots(2, sharex=True, figsize=(15, 10))
@@ -224,10 +225,22 @@ def analyze_weather_delays():
 	delays = dt.get_lineie_69_data()
 	weather = dt.get_iac_weather_data()
 
+	# === Check for outliers/errors in weather data 
+	q = 3 #weather.rain.quantile(0.99975)
+	mask = weather.rain < q
+	weather = weather[mask]
+	del mask, q
+
 	# === Focus on BUS 69
 	mask = delays.linie == 69
 	delays = delays[mask]
 	delays.reset_index(drop=True, inplace=True)
+	del mask
+
+	# ==== Remove NaN where there is no public transport data
+	mask = delays.betriebsdatum > datetime.datetime(2018, 2, 4)
+	delays = delays[mask]
+	del mask
 
 	# === Extract exact time delays
 	delays.loc[:, 'diff'] = delays.ist_an_von - delays.soll_an_von
@@ -236,28 +249,58 @@ def analyze_weather_delays():
 	delays.loc[:, 'datetime'] = pandas.to_datetime(delays.datum_von.astype(str) + ' ' + delays.time)
 	delays.datetime = delays.datetime.dt.round('60min')
 
-	groupedDelaysByHour = delays.groupby('datetime').sum()
-	groupedWeatherByHour = weather.resample('H').sum()
+	# === Try to remove DAILY SEASONALITY by subtracting previous weeks's value
+	_delays = delays.set_index('datetime', drop=True)
+	_delays.index = pandas.to_datetime(_delays.index)
+	print(_delays)
+	__delays = _delays.groupby(_delays.index).sum()
+	print(__delays)
 
-	df = groupedDelaysByHour.merge(groupedWeatherByHour, left_index=True, right_index=True, how='left')
-	print(df.corr().loc['diff', 'rain'])
-	# plt.savefig('delay_vs_time-of-day.png')
+	timeDelta = datetime.timedelta(days=7)
+	temp = __delays['diff'].copy() - __delays['diff'].shift(freq=timeDelta)
+	weeklyDetrended = temp.dropna(how='all', axis=0)
+	weeklyDetrended = weeklyDetrended.interpolate()
+	del timeDelta, temp
 
-	# # === Merge with WEATHER data 
-	# weatherDelays = delays.merge(weather, left_on='datetime', right_index=True, how='left')
-	# weatherDelays.to_csv(os.path.join(dt.data_dir(), 'weather_delays_merged.csv'))
+	plt.figure()
+	weeklyDetrended.plot(title='de-seasoned delay data (diff-of-diff)')
 
-	# # ==== Remove NaN where there is no public transport data
-	# mask = weatherDelays.datetime > datetime.datetime(2018,2,4)
-	# weatherDelays = weatherDelays[mask]
-	# del mask
+	# === Extract weather measures
+	weather.loc[:, 'datetime'] = weather.index.round('60min')
+
+	# === GROUPBY and RESAMPLE 
+	groupSumDelaysByHour = delays.groupby('datetime').sum()
+	groupMeanDelaysByHour = delays.groupby('datetime').mean()
+	resampleSumWeatherByHour = weather.resample('H').sum()
+	resampleMeanWeatherByHour = weather.resample('H').mean()
+
+	# === Feature transformations
+	maskSnow = resampleMeanWeatherByHour.T_air < 0
+	feature = resampleMeanWeatherByHour.rain * maskSnow.astype(int) 
+
+	fig, ax = plt.subplots(4, sharex=True)
+	axis = 0
+	resampleSumWeatherByHour.rain.plot(ax=ax[axis])
+	ax[axis].set_ylabel('rain [mm]')
+	axis += 1
+	window = 12
+	pandas.rolling_mean(resampleSumWeatherByHour.rain, window).plot(ax=ax[axis])
+	ax[axis].set_ylabel('rain (moving-average-%i) [mm]' %window)
+	axis += 1
+	feature.plot(ax=ax[axis], color='green')
+	ax[axis].set_ylabel('snow (rain * 1(temp<0)) [mm]')
+	axis += 1
+	weeklyDetrended.plot(ax=ax[axis], color='orange')
+	ax[axis].set_ylabel('cum. delay de-seasoned [s]')
 	
-	# cumulativeWeatherDelays = weatherDelays.groupby('datetime').sum()
-	# averageWeatherDelays = weatherDelays.groupby('datetime').mean()
+	plt.show()
 
+	df = resampleSumWeatherByHour.join(weeklyDetrended, how='left')
+	print(df.corr().loc['diff', 'rain'])
 
 
 ##################################################################################
 if __name__ == "__main__":
+	# main()
 	analyze_weather_delays()
 	print('Done!')

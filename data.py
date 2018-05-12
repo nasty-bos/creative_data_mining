@@ -109,6 +109,4 @@ def get_iac_weather_data():
 		header=0,
 		index_col=0,
 		parse_dates=True,
-		date_parser=lambda x: datetime.datetime.strptime(x, '%Y-%m-%datetime %H:%M:%S'))
-
-
+		date_parser=lambda x: datetime.datetime.strptime(x, '%Y-%m-%d %H:%M:%S'))
