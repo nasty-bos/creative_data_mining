@@ -221,8 +221,21 @@ def main():
 ##################################################################################
 def analyze_weather_delays():
 
+	import logging
+	import sys
+
+	logger = logging.getLogger(__name__)
+	logger.setLevel(logging.DEBUG)
+	ch = logging.StreamHandler(sys.stdout)
+	ch.setLevel(logging.DEBUG)
+	formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+	ch.setFormatter(formatter)
+	logger.addHandler(ch)	
+
 	# === Read DELAYS and WEATHER data
+	logger.info('<--Fetching data-->')
 	delays = dt.get_lineie_69_data()
+	flat = dt.get_linie_94_data()
 	weather = dt.get_iac_weather_data()
 
 	# === Check for outliers/errors in weather data 
@@ -232,6 +245,7 @@ def analyze_weather_delays():
 	del mask, q
 
 	# === Focus on BUS 69
+	logger.info('<--Prepare bus 69 data-->')
 	mask = delays.linie == 69
 	delays = delays[mask]
 	delays.reset_index(drop=True, inplace=True)
@@ -242,7 +256,16 @@ def analyze_weather_delays():
 	delays = delays[mask]
 	del mask
 
+	# ==== Flat line - bus 94
+	logger.info('<--Prepare bus 94 delay data-->')
+	flat.loc[:, 'diff'] = flat.ist_an_von - flat.soll_an_von
+	flat.loc[:, 'time'] = pandas.to_datetime(flat.soll_an_von.copy().astype(float), errors='coerce', unit='s')
+	flat.time = flat.time.dt.strftime('%H:%M')
+	flat.loc[:, 'datetime'] = pandas.to_datetime(flat.datum_von.astype(str) + ' ' + flat.time)
+	flat.datetime = flat.datetime.dt.round('60min')
+
 	# === Extract exact time delays
+	logger.info('<--Prepare bus 69 delay data-->')
 	delays.loc[:, 'diff'] = delays.ist_an_von - delays.soll_an_von
 	delays.loc[:, 'time'] = pandas.to_datetime(delays.soll_an_von.copy().astype(float), errors='coerce', unit='s')
 	delays.time = delays.time.dt.strftime('%H:%M')
@@ -250,20 +273,33 @@ def analyze_weather_delays():
 	delays.datetime = delays.datetime.dt.round('60min')
 
 	# === Try to remove DAILY SEASONALITY by subtracting previous weeks's value
+	logger.info('<--Compute de-seasoning for bus lines-->')
 	_delays = delays.set_index('datetime', drop=True)
 	_delays.index = pandas.to_datetime(_delays.index)
-	print(_delays)
 	__delays = _delays.groupby(_delays.index).sum()
-	print(__delays)
+
+	_flat = flat.set_index('datetime', drop=True)
+	_flat.index = pandas.to_datetime(_flat.index)
+	__flat = _flat.groupby(_flat.index).sum()
 
 	timeDelta = datetime.timedelta(days=7)
 	temp = __delays['diff'].copy() - __delays['diff'].shift(freq=timeDelta)
-	weeklyDetrended = temp.dropna(how='all', axis=0)
-	weeklyDetrended = weeklyDetrended.interpolate()
+	weeklyDetrendedBus69 = temp.dropna(how='all', axis=0)
+	weeklyDetrendedBus69 = weeklyDetrendedBus69.interpolate()
+
+	temp = __flat['diff'].copy() - __flat['diff'].shift(freq=timeDelta)
+	weeklyDetrendedBus94 = temp.dropna(how='all', axis=0)
+	weeklyDetrendedBus94 = weeklyDetrendedBus94.interpolate()
+
 	del timeDelta, temp
 
 	plt.figure()
-	weeklyDetrended.plot(title='de-seasoned delay data (diff-of-diff)')
+	weeklyDetrendedBus69.plot(title='de-seasoned delay (bus 69) data (diff-of-diff)')
+
+	plt.figure()
+	weeklyDetrendedBus94.plot(title='de-seasoned delay (bus 94) data (diff-of-diff)')
+
+	plt.show()
 
 	# === Extract weather measures
 	weather.loc[:, 'datetime'] = weather.index.round('60min')
@@ -271,6 +307,8 @@ def analyze_weather_delays():
 	# === GROUPBY and RESAMPLE 
 	groupSumDelaysByHour = delays.groupby('datetime').sum()
 	groupMeanDelaysByHour = delays.groupby('datetime').mean()
+	groupSumFlatByHour = flat.groupby('datetime').sum()
+	groupMeanFlatByHour = flat.groupby('datetime').mean()
 	resampleSumWeatherByHour = weather.resample('H').sum()
 	resampleMeanWeatherByHour = weather.resample('H').mean()
 
@@ -278,24 +316,92 @@ def analyze_weather_delays():
 	maskSnow = resampleMeanWeatherByHour.T_air < 0
 	feature = resampleMeanWeatherByHour.rain * maskSnow.astype(int) 
 
-	fig, ax = plt.subplots(4, sharex=True)
+	fig, ax = plt.subplots(6, sharex=True)
 	axis = 0
 	resampleSumWeatherByHour.rain.plot(ax=ax[axis])
 	ax[axis].set_ylabel('rain [mm]')
 	axis += 1
-	window = 12
+	window = 24
 	pandas.rolling_mean(resampleSumWeatherByHour.rain, window).plot(ax=ax[axis])
 	ax[axis].set_ylabel('rain (moving-average-%i) [mm]' %window)
 	axis += 1
 	feature.plot(ax=ax[axis], color='green')
 	ax[axis].set_ylabel('snow (rain * 1(temp<0)) [mm]')
 	axis += 1
-	weeklyDetrended.plot(ax=ax[axis], color='orange')
+	weeklyDetrendedBus69.plot(ax=ax[axis], color='orange')
 	ax[axis].set_ylabel('cum. delay de-seasoned [s]')
-	
+	axis += 1
+	weeklyDetrendedBus69.rolling(window=6).mean().plot(ax=ax[axis])
+	axis+=1
+	feature.rolling(window=6).mean().plot(ax=ax[axis], color='green')
+	ax[axis].set_ylabel('snow (rain * 1(temp<0)) [mm]')
+
 	plt.show()
 
-	df = resampleSumWeatherByHour.join(weeklyDetrended, how='left')
+	# === Combine features into new data-frame
+	logger.info('<--Construct new features - bus 69-->')
+	combine = [
+		weeklyDetrendedBus69.rolling(window=6).mean(),
+		pandas.rolling_mean(resampleSumWeatherByHour.rain, window),
+		pandas.Series(feature.rolling(window=6).mean(), name='snow'),
+	]
+
+	df = pandas.concat(combine, axis=1).dropna(how='any')
+	print(df.corr())
+
+	# === Scatter plots for rain and snow
+	mask = df['diff'] > 0 
+	_df = df.copy()[mask]
+	corr = _df.corr()
+	fig, ax = plt.subplots(1, 2, sharey=True)
+	axis=0
+	ax[axis].scatter(y=_df['diff'], x=_df['rain'], marker='x', color='blue')
+	ax[axis].set_xlabel('rain [mm]')
+	axis+=1
+	ax[axis].scatter(y=_df['diff'], x=_df['snow'], marker='x', color='green')
+	ax[axis].set_xlabel('snow [mm]')
+
+	corrDelayRain = mpatches.Patch(color='blue', label='Cum. delay [s] vs. rain [mm] - correlation %.4f' %(corr.loc['diff','rain']))
+	corrDelaySnow = mpatches.Patch(color='green', label='Cum. delay [s] vs. snow [mm] - correlation %.4f' %(corr.loc['diff','snow']))
+	plt.legend(handles=[corrDelayRain, corrDelaySnow])
+
+	plt.show() 
+	print('Correlation between delay, rain, snow. Delay>0')
+	print(corr)
+
+	# === Combine features into new data-frame
+	logger.info('<--Construct new features - bus 94-->')
+	combine = [
+		weeklyDetrendedBus94.rolling(window=6).mean(),
+		pandas.rolling_mean(resampleSumWeatherByHour.rain, window),
+		pandas.Series(feature.rolling(window=6).mean(), name='snow'),
+	]
+
+	df = pandas.concat(combine, axis=1).dropna(how='any')
+	print(df.corr())
+
+	# === Scatter plots for rain and snow
+	mask = df['diff'] > 0 
+	_df = df.copy()[mask]
+	corr = _df.corr()
+	fig, ax = plt.subplots(1, 2, sharey=True)
+	axis=0
+	ax[axis].scatter(y=_df['diff'], x=_df['rain'], marker='x', color='blue')
+	ax[axis].set_xlabel('rain [mm]')
+	axis+=1
+	ax[axis].scatter(y=_df['diff'], x=_df['snow'], marker='x', color='green')
+	ax[axis].set_xlabel('snow [mm]')
+
+	corrDelayRain = mpatches.Patch(color='blue', label='Cum. delay [s] vs. rain [mm] - correlation %.4f' %(corr.loc['diff','rain']))
+	corrDelaySnow = mpatches.Patch(color='green', label='Cum. delay [s] vs. snow [mm] - correlation %.4f' %(corr.loc['diff','snow']))
+	plt.legend(handles=[corrDelayRain, corrDelaySnow])
+
+	plt.show() 
+	print('Correlation between delay, rain, snow. Delay>0')
+	print(corr)
+
+	# === Corr between std. diff and rain 
+	df = resampleSumWeatherByHour.join(weeklyDetrendedBus69, how='left')
 	print(df.corr().loc['diff', 'rain'])
 
 
