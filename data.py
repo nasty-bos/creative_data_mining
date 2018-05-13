@@ -14,6 +14,11 @@ def data_dir():
 
 
 ##################################################################################
+def output_dir():
+	return "./output/"
+
+
+##################################################################################
 def make_correlation_graph(x, y, color='blue', marker='x', xLabel='', ylabel=''):
 	corrMat = numpy.corrcoef(x, y)
 	corrCoefPatch = mpatches.Patch(color=color, label='Correlation coefficient := %.2f' %corrMat[0][1])
@@ -28,7 +33,7 @@ def make_correlation_graph(x, y, color='blue', marker='x', xLabel='', ylabel='')
 
 
 ##################################################################################
-def download_delay_data():
+def download_delay_data(pathToSave=None):
 	## Import of delay data
 	listpaths = [
 	    'https://data.stadt-zuerich.ch/dataset/vbz_fahrzeiten_ogd/resource/a265b5d8-287f-4d22-88b2-f3a1770e1a4a/download/fahrzeiten_soll_ist_20180225_20180303.csv',
@@ -44,21 +49,30 @@ def download_delay_data():
 	for path_ in listpaths:
 		print('downloading delay data - %s' %path_.split('/')[-1])
 		df = pandas.read_csv(path_, index_col=None)
-		df.to_csv(os.path.join(data_dir(), path_.split('/')[-1]))
+		if pathToSave:
+			df.to_csv(os.path.join(pathToSave, path_.split('/')[-1]))
+		else:
+			df.to_csv(os.path.join(data_dir(), path_.split('/')[-1]))
 		list_.append(df)
 
 	return pandas.concat(list_, axis=1)
 
 
 ##################################################################################
-def get_delay_data():
-	files = os.listdir(os.path.join(data_dir()))
+def get_delay_data(pathToFiles=None):
+	if pathToFiles:
+		files = os.listdir(os.path.join(pathToFiles))
+		path = pathToFiles
+	else:
+		files = os.listdir(os.path.join(data_dir()))
+		path = data_dir()
+
 	delayFiles = [i for i in files if i.startswith('fahrzeiten')]
 
 	store = list()
 	for csv in delayFiles:
 		result = pandas.read_csv(
-					os.path.join(data_dir(), csv), 
+					os.path.join(path, csv), 
 					header=0, 
 					index_col=0, 
 					parse_dates=['betriebsdatum', 'datum_von'],

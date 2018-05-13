@@ -6,6 +6,7 @@ import datetime
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import matplotlib
 import data as dt
 
 ##################################################################################
@@ -136,8 +137,8 @@ def main():
 	corrCoefPatch = mpatches.Patch(color='blue', label='Correlation coefficient := %.2f' %corrMat[0][1])
 	plt.figure()
 	plt.scatter(x=xData, y=yData, marker='x')
-	plt.xlabel('CUM. RAINFALL [mm]')
-	plt.ylabel('DE-SEASONED DELAY [s]')
+	plt.xlabel('Precipitation (mm)')
+	plt.ylabel('De-seasoned delay (s)')
 	plt.legend(handles=[corrCoefPatch])
 	plt.tight_layout()
 	plt.savefig('corr_rain_vs_delay_-_with_de-seasoning.png')
@@ -151,8 +152,8 @@ def main():
 	corrCoefPatch = mpatches.Patch(color='blue', label='Correlation coefficient := %.2f' %corrMat[0][1])
 	plt.figure()
 	plt.scatter(x=xData, y=yData, marker='x')
-	plt.xlabel('CUM. RAINFALL [mm]')
-	plt.ylabel('DELAY [s]')
+	plt.xlabel('Precipitation [mm]')
+	plt.ylabel('Delay [s]')
 	plt.legend(handles=[corrCoefPatch])
 	plt.tight_layout()
 	plt.savefig('corr_rain_vs_delay_-_no_de-seasoning.png')
@@ -176,10 +177,9 @@ def main():
 	axis+=1
 	ax[axis].bar(xData.index, height=xData, width=0.05, color='green')
 	ax[axis].set_xlabel('YYYY-MM-DD:HH')
-	ax[axis].set_ylabel('CUM. HOURLY RAINFALL [mm]')
-	plt.tight_layout()
+	ax[axis].set_ylabel('Precipitation [mm]')
 
-	fig.savefig('delay_vs_rainfall.png')
+	fig.savefig(os.path.join(dt.output_dir(), 'delay_vs_rainfall.png'))
 
 	del mask, xData, yData
 
@@ -221,22 +221,14 @@ def main():
 ##################################################################################
 def analyze_weather_delays():
 
-	import logging
-	import sys
-
 	logger = logging.getLogger(__name__)
-	logger.setLevel(logging.DEBUG)
-	ch = logging.StreamHandler(sys.stdout)
-	ch.setLevel(logging.DEBUG)
-	formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-	ch.setFormatter(formatter)
-	logger.addHandler(ch)	
 
 	# === Read DELAYS and WEATHER data
 	logger.info('<--Fetching data-->')
 	delays = dt.get_lineie_69_data()
 	flat = dt.get_linie_94_data()
 	weather = dt.get_iac_weather_data()
+	oldWeather = dt.get_weather_data()
 
 	# === Check for outliers/errors in weather data 
 	q = 3 #weather.rain.quantile(0.99975)
@@ -312,29 +304,45 @@ def analyze_weather_delays():
 	resampleSumWeatherByHour = weather.resample('H').sum()
 	resampleMeanWeatherByHour = weather.resample('H').mean()
 
+	resampleMeanWeatherByHour.to_csv(os.path.join(dt.output_dir(), 'newWeatherData.csv'))
+
 	# === Feature transformations
 	maskSnow = resampleMeanWeatherByHour.T_air < 0
 	feature = resampleMeanWeatherByHour.rain * maskSnow.astype(int) 
 
 	fig, ax = plt.subplots(6, sharex=True)
+
+	window = 24
+
 	axis = 0
 	resampleSumWeatherByHour.rain.plot(ax=ax[axis])
-	ax[axis].set_ylabel('rain [mm]')
+	ax[axis].set_ylabel('[mm]')
+
 	axis += 1
-	window = 24
 	pandas.rolling_mean(resampleSumWeatherByHour.rain, window).plot(ax=ax[axis])
-	ax[axis].set_ylabel('rain (moving-average-%i) [mm]' %window)
-	axis += 1
-	feature.plot(ax=ax[axis], color='green')
-	ax[axis].set_ylabel('snow (rain * 1(temp<0)) [mm]')
+	ax[axis].set_ylabel('[mm]' )
+
 	axis += 1
 	weeklyDetrendedBus69.plot(ax=ax[axis], color='orange')
-	ax[axis].set_ylabel('cum. delay de-seasoned [s]')
+	ax[axis].set_ylabel('[s]')
+	
 	axis += 1
-	weeklyDetrendedBus69.rolling(window=6).mean().plot(ax=ax[axis])
+	weeklyDetrendedBus69.rolling(window=6).mean().plot(ax=ax[axis], color='orange')
+	ax[axis].set_ylabel('[s]')
+
+	axis += 1
+	feature.plot(ax=ax[axis], color='green')
+	ax[axis].set_ylabel('[mm]')
+	
 	axis+=1
 	feature.rolling(window=6).mean().plot(ax=ax[axis], color='green')
-	ax[axis].set_ylabel('snow (rain * 1(temp<0)) [mm]')
+	ax[axis].set_ylabel('[mm]')
+
+	plt.show()
+
+	fig, ax = plt.subplots(1)
+	resampleSumWeatherByHour.rain.plot(ax=ax, color='green', title='Weather Data - Hoenggerberg Station')
+	ax.set_ylabel('Precipitation [mm]')
 
 	plt.show()
 
@@ -342,7 +350,7 @@ def analyze_weather_delays():
 	logger.info('<--Construct new features - bus 69-->')
 	combine = [
 		weeklyDetrendedBus69.rolling(window=6).mean(),
-		pandas.rolling_mean(resampleSumWeatherByHour.rain, window),
+		resampleSumWeatherByHour.rain.rolling(window=window).mean(),
 		pandas.Series(feature.rolling(window=6).mean(), name='snow'),
 	]
 
@@ -353,19 +361,19 @@ def analyze_weather_delays():
 	mask = df['diff'] > 0 
 	_df = df.copy()[mask]
 	corr = _df.corr()
-	fig, ax = plt.subplots(1, 2, sharey=True)
+	fig, ax = plt.subplots(1, 2, sharey=True, figsize=(10, 10))
 	axis=0
 	ax[axis].scatter(y=_df['diff'], x=_df['rain'], marker='x', color='blue')
-	ax[axis].set_xlabel('rain [mm]')
+	ax[axis].set_xlabel('precipitation [mm]')
 	axis+=1
 	ax[axis].scatter(y=_df['diff'], x=_df['snow'], marker='x', color='green')
 	ax[axis].set_xlabel('snow [mm]')
 
-	corrDelayRain = mpatches.Patch(color='blue', label='Cum. delay [s] vs. rain [mm] - correlation %.4f' %(corr.loc['diff','rain']))
+	corrDelayRain = mpatches.Patch(color='blue', label='Cum. delay [s] vs. precipitation [mm] - correlation %.4f' %(corr.loc['diff','rain']))
 	corrDelaySnow = mpatches.Patch(color='green', label='Cum. delay [s] vs. snow [mm] - correlation %.4f' %(corr.loc['diff','snow']))
 	plt.legend(handles=[corrDelayRain, corrDelaySnow])
 
-	plt.show() 
+	plt.savefig(os.path.join(dt.output_dir(), 'bus_69_correlation_precipitation_and_snow.png')) 
 	print('Correlation between delay, rain, snow. Delay>0')
 	print(corr)
 
@@ -373,7 +381,7 @@ def analyze_weather_delays():
 	logger.info('<--Construct new features - bus 94-->')
 	combine = [
 		weeklyDetrendedBus94.rolling(window=6).mean(),
-		pandas.rolling_mean(resampleSumWeatherByHour.rain, window),
+		resampleSumWeatherByHour.rain.rolling(window=window).mean(),
 		pandas.Series(feature.rolling(window=6).mean(), name='snow'),
 	]
 
@@ -384,19 +392,19 @@ def analyze_weather_delays():
 	mask = df['diff'] > 0 
 	_df = df.copy()[mask]
 	corr = _df.corr()
-	fig, ax = plt.subplots(1, 2, sharey=True)
+	fig, ax = plt.subplots(1, 2, sharey=True, figsize=(10, 10))
 	axis=0
 	ax[axis].scatter(y=_df['diff'], x=_df['rain'], marker='x', color='blue')
-	ax[axis].set_xlabel('rain [mm]')
+	ax[axis].set_xlabel('precipitation [mm]')
 	axis+=1
 	ax[axis].scatter(y=_df['diff'], x=_df['snow'], marker='x', color='green')
 	ax[axis].set_xlabel('snow [mm]')
 
-	corrDelayRain = mpatches.Patch(color='blue', label='Cum. delay [s] vs. rain [mm] - correlation %.4f' %(corr.loc['diff','rain']))
+	corrDelayRain = mpatches.Patch(color='blue', label='Cum. delay [s] vs. precipitation [mm] - correlation %.4f' %(corr.loc['diff','rain']))
 	corrDelaySnow = mpatches.Patch(color='green', label='Cum. delay [s] vs. snow [mm] - correlation %.4f' %(corr.loc['diff','snow']))
 	plt.legend(handles=[corrDelayRain, corrDelaySnow])
 
-	plt.show() 
+	plt.savefig(os.path.join(dt.output_dir(), 'bus_94_correlation_precipitation_and_snow.png'))	
 	print('Correlation between delay, rain, snow. Delay>0')
 	print(corr)
 
@@ -406,7 +414,316 @@ def analyze_weather_delays():
 
 
 ##################################################################################
+def analyze_all_bus_lines():
+
+	import math
+
+	from sklearn.preprocessing import OneHotEncoder
+	from sklearn.linear_model import LinearRegression
+	from sklearn.metrics import r2_score
+	from sklearn.metrics import mean_squared_error
+
+	logger = logging.getLogger(__name__)
+
+	## 
+	logger.info('<--Read bus delay data-->')
+	zvv = pandas.read_hdf(os.path.join('data', 'zvv_all_bus_lines.h5'))
+
+	##
+	logger.info('<--Read weather data & adjust for outliers-->')
+	weather = dt.get_iac_weather_data()
+
+	q = 3 #weather.rain.quantile(0.99975)
+	mask = weather.rain < q
+	weather = weather[mask]
+	del mask, q
+
+	##
+	logger.info('<--Pre-process bus delay data-->')
+	zvv.loc[:, 'diff'] = zvv.ist_an_von - zvv.soll_an_von
+	zvv.loc[:, 'time'] = pandas.to_datetime(zvv.soll_an_von.astype(float), errors='coerce', unit='s')
+	zvv.time = zvv.time.dt.strftime('%H:%M')
+	zvv.loc[:, 'datetime'] = pandas.to_datetime(zvv.datum_von.astype(str) + ' ' + zvv.time)
+	zvv.datetime = zvv.datetime.dt.round('60min')
+
+	##
+	logger.info('<--Extract weather measures-->')
+	weather.loc[:, 'datetime'] = weather.index.round('60min')
+
+	resampleSumWeatherByHour = weather.resample('H').sum()
+	resampleMeanWeatherByHour = weather.resample('H').mean()
+
+	maskSnow = resampleMeanWeatherByHour.T_air < 0
+	feature = resampleMeanWeatherByHour.rain * maskSnow.astype(int) 
+
+	##
+	logger.info('<--Compute de-seasoning for all bus lines-->')
+	container = []
+	for line in numpy.sort(numpy.setdiff1d(zvv.linie.unique(), [753, 29])):
+
+		##
+		logger.info('<--Compute groupby sum on datetime for all bus line %i -->' %line)
+		transport = zvv[zvv.linie == line]
+		transport.set_index('datetime', drop=True, inplace=True)
+		transport.index = pandas.to_datetime(transport.index)
+		transport = transport.groupby(transport.index).sum()
+
+		timeDelta = datetime.timedelta(days=7)
+		temp = transport['diff'].copy() - transport['diff'].shift(freq=timeDelta)
+		weeklyDetrendedBus = temp.dropna(how='all', axis=0)
+		weeklyDetrendedBus = weeklyDetrendedBus.interpolate()
+		del timeDelta, temp
+
+		##
+		logger.info('<--Combine line %i features into new data-frame-->' %line)
+		window = 6
+		combine = [
+			weeklyDetrendedBus.rolling(window=window).mean(),
+			resampleSumWeatherByHour.rain.rolling(window=window).mean(),
+			pandas.Series(feature.rolling(window=window).mean(), name='snow'),
+			pandas.Series(resampleMeanWeatherByHour.T_air.rolling(window=window).mean(), name='temp')
+		]
+
+		df = pandas.concat(combine, axis=1).dropna(how='any')
+		df.loc[:, 'weekday'] = df.index.dayofweek
+		df.loc[:, 'hour'] = df.index.hour
+
+		mask = (df['diff'] > 0)
+		df = df[mask]
+		corr = df.corr()
+
+		logger.info('<--1. Categorical features -> one-hot encoder-->')
+		data = df.sort_values(['weekday', 'hour'])
+		encoder = OneHotEncoder()
+		
+		categoricalFeatures = [
+			'weekday', 
+			'hour'
+		]
+
+		encoderFeatureOrder = [
+			*data.weekday.unique(),
+			*data.hour.unique(),
+		]
+
+		enc = encoder.fit(data.loc[:, categoricalFeatures])
+		categoricalData = enc.transform(data.loc[:, categoricalFeatures])
+
+		logger.info('<--2. Ordinal features -> no transform -->')
+		target = ['diff']
+		data.drop(columns=categoricalFeatures)
+		ordinalFeatures = data.columns.difference(target)
+
+
+		logger.info('<--2. Regression-->')
+		trainX = numpy.hstack([data.loc[:, ordinalFeatures].values, categoricalData.todense()])
+		trainY = data.loc[:, target].values.flatten()
+		reg = LinearRegression(fit_intercept=True)
+		reg.fit(X=trainX, y=trainY)
+		predict = reg.predict(X=trainX)
+
+		logger.info('<--3. Results & Plot-->')
+		a, b = numpy.polyfit(trainY, predict, deg=1)
+		f = lambda x: a*x + b
+
+		fig, ax = plt.subplots(1)
+		ax.scatter(y=trainY, x=predict, color='red', marker='x')
+		ax.plot(predict, f(predict))
+		ax.set_aspect('equal')
+		ax.grid(True)
+		ax.set_ylabel('Actual - delay')
+		ax.set_xlabel('Predicted - delay')
+		ax.set_title('Linear Regression Model - Line %i' %line)
+
+		r2 = r2_score(trainY, predict)
+		mse = mean_squared_error(trainY, predict)
+
+		corrDelayRain = mpatches.Patch(color='blue', label='R^2 %.4f' %r2)
+		corrDelaySnow = mpatches.Patch(color='blue', label='RMSE %.4f' %math.sqrt(mse))
+		plt.legend(handles=[corrDelayRain, corrDelaySnow])
+
+		plt.savefig(os.path.join(dt.output_dir(), 'line_%i_prediction.png' %line))
+
+		logger.info('<--4. Correlation structure-->')
+		print(df.corr())
+
+		logger.info('<--5. Save summary statistics to file-->')
+		stats = pandas.Series(data=corr.loc['diff',:], name=line)
+		stats['r2'] = r2
+		stats['mse'] = mse
+		container.append(stats)
+
+
+	pandas.concat(container, axis=1).to_csv(os.path.join(dt.output_dir(), 'correlation_all_bus_lines.csv'))
+
+
+
+##################################################################################
+def analyze_all_tram_lines():
+
+	import math
+
+	from sklearn.preprocessing import OneHotEncoder
+	from sklearn.linear_model import LinearRegression
+	from sklearn.metrics import r2_score
+	from sklearn.metrics import mean_squared_error
+
+	logger = logging.getLogger(__name__)
+
+	## 
+	logger.info('<--Read bus delay data-->')
+	zvv = pandas.read_hdf(os.path.join('data', 'zvv_all_tram_lines.h5'))
+
+	##
+	logger.info('<--Read weather data & adjust for outliers-->')
+	weather = dt.get_iac_weather_data()
+
+	q = 3 #weather.rain.quantile(0.99975)
+	mask = weather.rain < q
+	weather = weather[mask]
+	del mask, q
+
+	##
+	logger.info('<--Pre-process tram delay data-->')
+	zvv.loc[:, 'diff'] = zvv.ist_an_von - zvv.soll_an_von
+	zvv.loc[:, 'time'] = pandas.to_datetime(zvv.soll_an_von.astype(float), errors='coerce', unit='s')
+	zvv.time = zvv.time.dt.strftime('%H:%M')
+	zvv.loc[:, 'datetime'] = pandas.to_datetime(zvv.datum_von.astype(str) + ' ' + zvv.time)
+	zvv.datetime = zvv.datetime.dt.round('60min')
+
+	##
+	logger.info('<--Extract weather measures-->')
+	weather.loc[:, 'datetime'] = weather.index.round('60min')
+
+	resampleSumWeatherByHour = weather.resample('H').sum()
+	resampleMeanWeatherByHour = weather.resample('H').mean()
+
+	maskSnow = resampleMeanWeatherByHour.T_air < 0
+	feature = resampleMeanWeatherByHour.rain * maskSnow.astype(int) 
+
+	##
+	logger.info('<--Compute de-seasoning for all tram lines-->')
+	container = []
+	for line in numpy.sort(numpy.setdiff1d(zvv.linie.unique(), [753, 29])):
+
+		##
+		logger.info('<--Compute groupby sum on datetime for all tram line %i -->' %line)
+		transport = zvv[zvv.linie == line]
+		transport.set_index('datetime', drop=True, inplace=True)
+		transport.index = pandas.to_datetime(transport.index)
+		transport = transport.groupby(transport.index).sum()
+
+		timeDelta = datetime.timedelta(days=7)
+		temp = transport['diff'].copy() - transport['diff'].shift(freq=timeDelta)
+		weeklyDetrendedtram = temp.dropna(how='all', axis=0)
+		weeklyDetrendedtram = weeklyDetrendedtram.interpolate()
+		del timeDelta, temp
+
+		##
+		logger.info('<--Combine line %i features into new data-frame-->' %line)
+		window = 6
+		combine = [
+			weeklyDetrendedtram.rolling(window=window).mean(),
+			resampleSumWeatherByHour.rain.rolling(window=window).mean(),
+			pandas.Series(feature.rolling(window=window).mean(), name='snow'),
+			pandas.Series(resampleMeanWeatherByHour.T_air.rolling(window=window).mean(), name='temp')
+		]
+
+		df = pandas.concat(combine, axis=1).dropna(how='any')
+		df.loc[:, 'weekday'] = df.index.dayofweek
+		df.loc[:, 'hour'] = df.index.hour
+
+		mask = (df['diff'] > 0)
+		df = df[mask]
+		corr = df.corr()
+
+		logger.info('<--1. Categorical features -> one-hot encoder-->')
+		data = df.sort_values(['weekday', 'hour'])
+		encoder = OneHotEncoder()
+		
+		categoricalFeatures = [
+			'weekday', 
+			'hour'
+		]
+
+		encoderFeatureOrder = [
+			*data.weekday.unique(),
+			*data.hour.unique(),
+		]
+
+		enc = encoder.fit(data.loc[:, categoricalFeatures])
+		categoricalData = enc.transform(data.loc[:, categoricalFeatures])
+
+		logger.info('<--2. Ordinal features -> no transform -->')
+		target = ['diff']
+		data.drop(columns=categoricalFeatures)
+		ordinalFeatures = data.columns.difference(target)
+
+
+		logger.info('<--2. Regression-->')
+		trainX = numpy.hstack([data.loc[:, ordinalFeatures].values, categoricalData.todense()])
+		trainY = data.loc[:, target].values.flatten()
+		reg = LinearRegression(fit_intercept=True)
+		reg.fit(X=trainX, y=trainY)
+		predict = reg.predict(X=trainX)
+
+		logger.info('<--3. Results & Plot-->')
+		a, b = numpy.polyfit(trainY, predict, deg=1)
+		f = lambda x: a*x + b
+
+		fig, ax = plt.subplots(1)
+		ax.scatter(y=trainY, x=predict, color='red', marker='x')
+		ax.plot(predict, f(predict))
+		ax.set_aspect('equal')
+		ax.grid(True)
+		ax.set_ylabel('Actual - delay')
+		ax.set_xlabel('Predicted - delay')
+		ax.set_title('Linear Regression Model - Line %i' %line)
+
+		r2 = r2_score(trainY, predict)
+		mse = mean_squared_error(trainY, predict)
+
+		corrDelayRain = mpatches.Patch(color='blue', label='R^2 %.4f' %r2)
+		corrDelaySnow = mpatches.Patch(color='blue', label='RMSE %.4f' %math.sqrt(mse))
+		plt.legend(handles=[corrDelayRain, corrDelaySnow])
+
+		plt.savefig(os.path.join(dt.output_dir(), 'line_%i_prediction.png' %line))
+
+		logger.info('<--4. Correlation structure-->')
+		print(df.corr())
+
+		logger.info('<--5. Save summary statistics to file-->')
+		stats = pandas.Series(data=corr.loc['diff',:], name=line)
+		stats['r2'] = r2
+		stats['mse'] = mse
+		container.append(stats)
+
+
+	pandas.concat(container, axis=1).to_csv(os.path.join(dt.output_dir(), 'correlation_all_tram_lines.csv'))
+
+
+##################################################################################
 if __name__ == "__main__":
+
+	import logging
+	import sys
+
+	logger = logging.getLogger(__name__)
+	logger.setLevel(logging.DEBUG)
+	ch = logging.StreamHandler(sys.stdout)
+	ch.setLevel(logging.DEBUG)
+	formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+	ch.setFormatter(formatter)
+	logger.addHandler(ch)	
+
+	font = {'family' : 'normal',
+	        'weight' : 'bold',
+	        'size'   : 14}
+
+	matplotlib.rc('font', **font)	
+
 	# main()
-	analyze_weather_delays()
+	# analyze_weather_delays()
+	analyze_all_bus_lines()
+	analyze_all_tram_lines()
 	print('Done!')
