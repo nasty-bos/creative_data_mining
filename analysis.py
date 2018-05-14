@@ -94,7 +94,8 @@ def main():
 
 	# === Plot data with and without seasoning treatment 
 	fig, axes = plt.subplots(2, sharex=True, figsize=(15, 10))
-
+	matplotlib.rc('xtick', labelsize=24) 
+	matplotlib.rc('ytick', labelsize=24)
 	axis=0
 	axes[axis].plot(weeklySeasoned.index, cumulativeWeatherDelays.reindex(weeklySeasoned.index)['diff'])
 	axes[axis].set_xlabel('Without de-seasoning')
@@ -176,7 +177,7 @@ def main():
 	axis+=1
 	ax[axis].bar(xData.index, height=xData, width=0.05, color='green')
 	ax[axis].set_xlabel('YYYY-MM-DD:HH')
-	ax[axis].set_ylabel('CUM. HOURLY RAINFALL [mm]')
+	ax[axis].set_ylabel('OTELFINGEN - CUM. HOURLY PRECIPITATION [mm]')
 	plt.tight_layout()
 
 	fig.savefig('delay_vs_rainfall.png')
@@ -312,6 +313,37 @@ def analyze_weather_delays():
 	resampleSumWeatherByHour = weather.resample('H').sum()
 	resampleMeanWeatherByHour = weather.resample('H').mean()
 
+	# === Plot precipitation by hour
+	fig, ax = plt.subplots(1, figsize=(15, 10))
+	ax.bar(resampleSumWeatherByHour.index, height=resampleSumWeatherByHour, width=0.05, color='green')
+	ax.set_xlabel('YYYY-MM-DD:HH')
+	ax.set_ylabel('HOENGGERBERG - CUM. HOURLY PRECIPITATION [mm]')
+	plt.tight_layout()
+
+	fig.savefig('precipitation_hoengg.png')
+    
+    # === Plot delays vs. weather data
+
+	print(xData)
+	xData = resampleSumWeatherByHour.rain
+	yData = cumulativeWeatherDelays['diff']
+
+	fig, ax = plt.subplots(2, sharex=True, figsize=(15, 10))
+
+	axis=0
+	ax[axis].plot(yData.index, yData) 
+	ax[axis].set_ylabel('Delay [s]')
+
+	axis+=1
+	ax[axis].bar(xData.index, height=xData, width=0.05, color='green')
+	ax[axis].set_xlabel('YYYY-MM-DD:HH')
+	ax[axis].set_ylabel('HOENGGERBERG - CUM. HOURLY PRECIPITATION [mm]')
+	plt.tight_layout()
+
+	fig.savefig('delay_vs_rainfall.png')
+
+	del mask, xData, yData
+    
 	# === Feature transformations
 	maskSnow = resampleMeanWeatherByHour.T_air < 0
 	feature = resampleMeanWeatherByHour.rain * maskSnow.astype(int) 
@@ -407,6 +439,6 @@ def analyze_weather_delays():
 
 ##################################################################################
 if __name__ == "__main__":
-	# main()
-	analyze_weather_delays()
+	main()
+	#analyze_weather_delays()
 	print('Done!')
